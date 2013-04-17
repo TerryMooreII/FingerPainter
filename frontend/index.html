@@ -1,0 +1,141 @@
+<html>
+<head>
+	<title>Finger Painter</title>
+    <script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+    <script type="text/javascript" src="node_modules/socket.io-client/dist/socket.io.js"></script>
+	<style type="text/css">
+	#canvas {
+	    background-color: white;
+	    border: 2px dashed #bbb;
+	    margin-left: 10px;
+	    margin-top: 5px;
+	    height: 600px;
+	    width: 1100px;
+        margin-right:20px;
+	}
+    label{
+        font-weight: bold
+    }
+	</style>
+</head>
+<body>
+    <h1>Finger Painter...</h1>
+    <div>
+    <div style="float:left">
+        <canvas id="canvas" width="1100" height="600"></canvas>
+    </div>
+    <div style="float:left">
+        <div>
+            <label>Size</label>
+            <select id="size">
+                <option value="2">2</option>
+                <option SELECTED value="5">5</option>
+                <option value="8">8</option>
+                <option value="11">11</option>
+                <option value="14">14</option>
+                <option value="17">17</option>
+                <option value="20">20</option>
+            </select>
+        </div>
+        <div>
+            <label>Color</label>
+            <select id="color">
+                <option value="red">Red</option>
+                <option value="blue">Blue</option>
+                <option value="yellow">Yellow</option>
+                <option value="black">Black</option>
+                <option value="green">Green</option>
+                <option value="pink">Pink</option>
+            </select>
+        </div>
+        <div>
+            <label>Shape</label>
+            <select id="shape">
+                <option value="square">Square</option>
+                <option value="round">Circle</option>
+                <option value="butt">Butt</option>
+            </select>
+        </div>
+    </div>
+</body>
+
+<script type="text/javascript">
+var socket = io.connect('http://10.104.100.52:8888');
+//var colors = ['red', 'blue', 'green', 'yellow', 'black'];
+//var color = colors[Math.floor(Math.random() * colors.length)];
+
+var MDown = false;
+
+var canvas = document.getElementById('canvas');
+var context = canvas.getContext('2d');
+
+canvas.onselectstart = function() { return false; };
+canvas.unselectable = "on";
+canvas.style.MozUserSelect = "none";
+
+canvas.onmousedown = function(e) {
+    var size = $('#size').val();
+    var color = $('#color').val();
+    var shape = $('#shape').val();
+    MDown = true;
+    context.strokeStyle = color;
+    context.lineWidth = size;
+    context.lineCap = shape;
+    context.beginPath();
+    var x = e.pageX - getPosition(canvas).left;
+    var y = e.pageY - getPosition(canvas).top;
+    context.moveTo(x, y);
+    var data = {
+        color: color,
+        size: size,
+        shape: shape,
+        x: x,
+        y: y
+    };
+    socket.emit('new', data);
+}
+
+canvas.onmouseup = function() { 
+    MDown = false; 
+};
+
+canvas.onmousemove = function(e) { 
+    if (MDown) {
+        var x = e.pageX - getPosition(canvas).left;
+        var y = e.pageY - getPosition(canvas).top;
+        context.lineTo(x, y);
+        context.stroke();
+        var data = {
+            x: x,
+            y: y
+        };
+        socket.emit('update', data);
+    }
+}
+
+socket.on('new', function (data) {
+    context.strokeStyle = data.color;
+    context.lineWidth = data.size;
+    context.lineCap = data.shape;
+    context.beginPath();
+    context.moveTo(data.x, data.y);
+    console.log(context)
+});
+
+socket.on('update', function (data) {
+    context.lineTo(data.x, data.y)
+    console.log(' x: ' + data.x + ' y: ' + data.y)  
+    context.stroke();
+});
+
+function getPosition(el) {
+    var position = {left: 0, top: 50};
+    if (el) {
+        var offset = $(el).position();
+        position.left = offset.left + 10;
+        position.top = offset.top;
+    }
+    return position;
+}
+</script>
+</html>
